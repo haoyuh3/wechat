@@ -10,15 +10,6 @@ import (
 	"net/http"
 )
 
-// HelloWorld 测试接口
-func HelloWorld(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"code": 200,
-		"data": "Hello World!",
-	})
-
-}
-
 // Register 注册
 func Register(c *gin.Context) {
 	var registerReq request.RegisterRequest
@@ -38,6 +29,7 @@ func Register(c *gin.Context) {
 // Login 登录
 func Login(c *gin.Context) {
 	var loginReq request.LoginRequest
+	// 绑定 JSON 请求体到 loginReq 结构体
 	if err := c.BindJSON(&loginReq); err != nil {
 		zlog.Error(err.Error())
 		c.JSON(http.StatusOK, gin.H{
@@ -183,4 +175,19 @@ func SendSmsCode(c *gin.Context) {
 	}
 	message, ret := gorm.UserInfoService.SendSmsCode(req.Telephone)
 	JsonBack(c, message, ret, nil)
+}
+
+// HelloWorld 测试接口
+func HelloWorld(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"code": 200,
+		"data": "Hello World!",
+	})
+
+}
+
+// UserList 测试接口
+func UserList(c *gin.Context) {
+	message, userList, err := gorm.UserInfoService.GetUserList()
+	JsonBack(c, message, err, userList)
 }

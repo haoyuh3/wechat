@@ -71,6 +71,9 @@ func init() {
 	GE.POST("/message/uploadFile", v1.UploadFile)
 	GE.POST("/chatroom/getCurContactListInChatRoom", v1.GetCurContactListInChatRoom)
 	GE.GET("/wss", v1.WsLogin)
+
+	// 测试接口
 	GE.GET("/helloWorld", v1.HelloWorld)
+	GE.GET("/userList", v1.UserList)
 
 }

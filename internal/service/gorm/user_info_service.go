@@ -192,7 +192,6 @@ func (u *userInfoService) Register(registerReq request.RegisterRequest) (string,
 	newUser.CreatedAt = time.Now()
 	newUser.IsAdmin = u.checkUserIsAdminOrNot(newUser)
 	newUser.Status = user_status_enum.NORMAL
-	// 手机号验证，最后一步才调用api，省钱hhh
 	//err := sms.VerificationCode(registerReq.Telephone)
 	//if err != nil {
 	//	zlog.Error(err.Error())
@@ -204,10 +203,6 @@ func (u *userInfoService) Register(registerReq request.RegisterRequest) (string,
 		zlog.Error(res.Error.Error())
 		return constants.SYSTEM_ERROR, nil, -1
 	}
-	// 注册成功，chat client建立
-	//if err := chat.NewClientInit(c, newUser.Uuid); err != nil {
-	//	return "", err
-	//}
 	registerRsp := &respond.RegisterRespond{
 		Uuid:      newUser.Uuid,
 		Telephone: newUser.Telephone,
@@ -254,16 +249,11 @@ func (u *userInfoService) UpdateUserInfo(updateReq request.UpdateUserInfoRequest
 		zlog.Error(res.Error.Error())
 		return constants.SYSTEM_ERROR, -1
 	}
-	//if err := myredis.DelKeysWithPattern("user_info_" + updateReq.Uuid); err != nil {
-	//	zlog.Error(err.Error())
-	//}
 	return "修改用户信息成功", 0
 }
 
 // GetUserInfoList 获取用户列表除了ownerId之外 - 管理员
-// 管理员少，而且如果用户更改了，那么管理员会一直频繁删除redis，更新redis，比较麻烦，所以管理员暂时不使用redis缓存
 func (u *userInfoService) GetUserInfoList(ownerId string) (string, []respond.GetUserListRespond, int) {
-	// redis中没有数据，从数据库中获取
 	var users []model.UserInfo
 	// 获取所有的用户
 	if res := dao.GormDB.Unscoped().Where("uuid != ?", ownerId).Find(&users); res.Error != nil {
@@ -290,7 +280,6 @@ func (u *userInfoService) GetUserInfoList(ownerId string) (string, []respond.Get
 }
 
 // AbleUsers 启用用户
-// 用户是否启用禁用需要实时更新contact_user_list状态，所以redis的contact_user_list需要删除
 func (u *userInfoService) AbleUsers(uuidList []string) (string, int) {
 	var users []model.UserInfo
 	if res := dao.GormDB.Model(model.UserInfo{}).Where("uuid in (?)", uuidList).Find(&users); res.Error != nil {
@@ -304,15 +293,10 @@ func (u *userInfoService) AbleUsers(uuidList []string) (string, int) {
 			return constants.SYSTEM_ERROR, -1
 		}
 	}
-	// 删除所有"contact_user_list"开头的key
-	//if err := myredis.DelKeysWithPrefix("contact_user_list"); err != nil {
-	//	zlog.Error(err.Error())
-	//}
 	return "启用用户成功", 0
 }
 
 // DisableUsers 禁用用户
-// 用户是否启用禁用需要实时更新contact_user_list状态，所以redis的contact_user_list需要删除
 func (u *userInfoService) DisableUsers(uuidList []string) (string, int) {
 	var users []model.UserInfo
 	if res := dao.GormDB.Model(model.UserInfo{}).Where("uuid in (?)", uuidList).Find(&users); res.Error != nil {
@@ -341,15 +325,10 @@ func (u *userInfoService) DisableUsers(uuidList []string) (string, int) {
 			}
 		}
 	}
-	// 删除所有"contact_user_list"开头的key
-	//if err := myredis.DelKeysWithPrefix("contact_user_list"); err != nil {
-	//	zlog.Error(err.Error())
-	//}
 	return "禁用用户成功", 0
 }
 
 // DeleteUsers 删除用户
-// 用户是否启用禁用需要实时更新contact_user_list状态，所以redis的contact_user_list需要删除
 func (u *userInfoService) DeleteUsers(uuidList []string) (string, int) {
 	var users []model.UserInfo
 	if res := dao.GormDB.Model(model.UserInfo{}).Where("uuid in (?)", uuidList).Find(&users); res.Error != nil {
@@ -428,10 +407,6 @@ func (u *userInfoService) DeleteUsers(uuidList []string) (string, int) {
 		}
 
 	}
-	// 删除所有"contact_user_list"开头的key
-	//if err := myredis.DelKeysWithPrefix("contact_user_list"); err != nil {
-	//	zlog.Error(err.Error())
-	//}
 	return "删除用户成功", 0
 }
 
@@ -496,4 +471,13 @@ func (u *userInfoService) SetAdmin(uuidList []string, isAdmin int8) (string, int
 		}
 	}
 	return "设置管理员成功", 0
+}
+
+func (u *userInfoService) GetUserList() (string, []model.UserInfo, int) {
+	var users []model.UserInfo
+	if res := dao.GormDB.Find(&users); res.Error != nil {
+		zlog.Error(res.Error.Error())
+		return constants.SYSTEM_ERROR, nil, -1
+	}
+	return "获取用户列表成功", users, 0
 }

@@ -1,6 +1,8 @@
 package respond
 
 type LoginRespond struct {
+	// 用户信息
+	// 字段配置json标签，指定序列化后的字段名
 	Uuid      string `json:"uuid"`
 	Nickname  string `json:"nickname"`
 	Telephone string `json:"telephone"`
