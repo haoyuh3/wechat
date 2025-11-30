@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+// JsonBack 统一返回格式
 func JsonBack(c *gin.Context, message string, ret int, data interface{}) {
 	if ret == 0 {
 		if data != nil {

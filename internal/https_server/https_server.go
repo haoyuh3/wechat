@@ -11,11 +11,14 @@ import (
 var GE *gin.Engine
 
 func init() {
+	// 创建了一个 Gin 的路由引擎实例并赋值给全局变量
 	GE = gin.Default()
-	corsConfig := cors.DefaultConfig()
+	// 配置 CORS 中间件，允许所有来源的请求
+	corsConfig := cors.DefaultConfig() // 使用默认的 CORS 配置 包括允许的来源、方法和头信息
 	corsConfig.AllowOrigins = []string{"*"}
 	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	corsConfig.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
+	// 应用 CORS 中间件到 Gin 引擎
 	GE.Use(cors.New(corsConfig))
 	GE.Use(ssl.TlsHandler(config.GetConfig().MainConfig.Host, config.GetConfig().MainConfig.Port))
 	GE.Static("/static/avatars", config.GetConfig().StaticAvatarPath)
@@ -68,5 +71,6 @@ func init() {
 	GE.POST("/message/uploadFile", v1.UploadFile)
 	GE.POST("/chatroom/getCurContactListInChatRoom", v1.GetCurContactListInChatRoom)
 	GE.GET("/wss", v1.WsLogin)
+	GE.GET("/helloWorld", v1.HelloWorld)
 
 }

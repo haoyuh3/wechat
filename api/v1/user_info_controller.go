@@ -10,6 +10,15 @@ import (
 	"net/http"
 )
 
+// HelloWorld 测试接口
+func HelloWorld(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"code": 200,
+		"data": "Hello World!",
+	})
+
+}
+
 // Register 注册
 func Register(c *gin.Context) {
 	var registerReq request.RegisterRequest
