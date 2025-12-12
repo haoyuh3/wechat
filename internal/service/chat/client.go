@@ -27,8 +27,8 @@ type MessageBack struct {
 type Client struct {
 	Conn     *websocket.Conn
 	Uuid     string
-	SendTo   chan []byte       // 给server端
-	SendBack chan *MessageBack // 给前端
+	SendTo   chan []byte       // send to server
+	SendBack chan *MessageBack // send back to frontend
 }
 
 var upgrader = websocket.Upgrader{
@@ -60,19 +60,20 @@ func (c *Client) Read() {
 			}
 			log.Println("接受到消息为: ", jsonMessage)
 			if messageMode == "channel" {
-				// 如果server的转发channel没满，先把sendto中的给transmit
+				// channel 使用三级缓冲机制
+				// 先清空客户端本地缓冲（SendTo）→ 发送到服务器转发通道（Transmit）
 				for len(ChatServer.Transmit) < constants.CHANNEL_SIZE && len(c.SendTo) > 0 {
 					sendToMessage := <-c.SendTo
 					ChatServer.SendMessageToTransmit(sendToMessage)
 				}
-				// 如果server没满，sendto空了，直接给server的transmit
+				// 服务器转发通道未满，直接发送当前消息
 				if len(ChatServer.Transmit) < constants.CHANNEL_SIZE {
 					ChatServer.SendMessageToTransmit(jsonMessage)
 				} else if len(c.SendTo) < constants.CHANNEL_SIZE {
 					// 如果server满了，直接塞sendto
 					c.SendTo <- jsonMessage
 				} else {
-					// 否则考虑加宽channel size，或者使用kafka
+					// 完全满了：拒绝消息，返回错误提示
 					if err := c.Conn.WriteMessage(websocket.TextMessage, []byte("由于目前同一时间过多用户发送消息，消息发送失败，请稍后重试")); err != nil {
 						zlog.Error(err.Error())
 					}
