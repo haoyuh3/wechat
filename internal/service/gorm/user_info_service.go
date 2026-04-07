@@ -254,9 +254,12 @@ func (u *userInfoService) UpdateUserInfo(updateReq request.UpdateUserInfoRequest
 		zlog.Error(res.Error.Error())
 		return constants.SYSTEM_ERROR, -1
 	}
-	//if err := myredis.DelKeysWithPattern("user_info_" + updateReq.Uuid); err != nil {
-	//	zlog.Error(err.Error())
-	//}
+	if err := myredis.DelKeyIfExists("user_info_" + updateReq.Uuid); err != nil {
+		zlog.Error(err.Error())
+	}
+	if err := myredis.DelKeyIfExists("contact_info_" + updateReq.Uuid); err != nil {
+		zlog.Error(err.Error())
+	}
 	return "修改用户信息成功", 0
 }
 
@@ -304,10 +307,9 @@ func (u *userInfoService) AbleUsers(uuidList []string) (string, int) {
 			return constants.SYSTEM_ERROR, -1
 		}
 	}
-	// 删除所有"contact_user_list"开头的key
-	//if err := myredis.DelKeysWithPrefix("contact_user_list"); err != nil {
-	//	zlog.Error(err.Error())
-	//}
+	if err := myredis.DelKeysWithPrefix("contact_user_list"); err != nil {
+		zlog.Error(err.Error())
+	}
 	return "启用用户成功", 0
 }
 
@@ -341,10 +343,9 @@ func (u *userInfoService) DisableUsers(uuidList []string) (string, int) {
 			}
 		}
 	}
-	// 删除所有"contact_user_list"开头的key
-	//if err := myredis.DelKeysWithPrefix("contact_user_list"); err != nil {
-	//	zlog.Error(err.Error())
-	//}
+	if err := myredis.DelKeysWithPrefix("contact_user_list"); err != nil {
+		zlog.Error(err.Error())
+	}
 	return "禁用用户成功", 0
 }
 
@@ -428,10 +429,9 @@ func (u *userInfoService) DeleteUsers(uuidList []string) (string, int) {
 		}
 
 	}
-	// 删除所有"contact_user_list"开头的key
-	//if err := myredis.DelKeysWithPrefix("contact_user_list"); err != nil {
-	//	zlog.Error(err.Error())
-	//}
+	if err := myredis.DelKeysWithPrefix("contact_user_list"); err != nil {
+		zlog.Error(err.Error())
+	}
 	return "删除用户成功", 0
 }
 
@@ -461,13 +461,14 @@ func (u *userInfoService) GetUserInfo(uuid string) (string, *respond.GetUserInfo
 				IsAdmin:   user.IsAdmin,
 				Status:    user.Status,
 			}
-			//rspString, err := json.Marshal(rsp)
-			//if err != nil {
-			//	zlog.Error(err.Error())
-			//}
-			//if err := myredis.SetKeyEx("user_info_"+uuid, string(rspString), constants.REDIS_TIMEOUT*time.Minute); err != nil {
-			//	zlog.Error(err.Error())
-			//}
+			rspBytes, err := json.Marshal(rsp)
+			if err != nil {
+				zlog.Error(err.Error())
+			} else {
+				if err := myredis.SetKeyEx("user_info_"+uuid, string(rspBytes), constants.REDIS_TIMEOUT*time.Minute); err != nil {
+					zlog.Error(err.Error())
+				}
+			}
 			return "获取用户信息成功", &rsp, 0
 		} else {
 			zlog.Error(err.Error())
