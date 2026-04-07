@@ -151,17 +151,28 @@ func (u *userContactService) LoadMyJoinedGroup(ownerId string) (string, []respon
 
 // GetContactInfo 获取联系人信息
 // 调用这个接口的前提是该联系人没有处在删除或被删除，或者该用户还在群聊中
-// redis todo
 func (u *userContactService) GetContactInfo(contactId string) (string, respond.GetContactInfoRespond, int) {
+	cacheKey := "contact_info_" + contactId
+	rspString, err := myredis.GetKeyNilIsErr(cacheKey)
+	if err == nil {
+		var rsp respond.GetContactInfoRespond
+		if jsonErr := json.Unmarshal([]byte(rspString), &rsp); jsonErr != nil {
+			zlog.Error(jsonErr.Error())
+		} else {
+			return "获取联系人信息成功", rsp, 0
+		}
+	} else if !errors.Is(err, redis.Nil) {
+		zlog.Error(err.Error())
+	}
+
 	if contactId[0] == 'G' {
 		var group model.GroupInfo
 		if res := dao.GormDB.First(&group, "uuid = ?", contactId); res.Error != nil {
 			zlog.Error(res.Error.Error())
 			return constants.SYSTEM_ERROR, respond.GetContactInfoRespond{}, -1
 		}
-		// 没被禁用
 		if group.Status != group_status_enum.DISABLE {
-			return "获取联系人信息成功", respond.GetContactInfoRespond{
+			rsp := respond.GetContactInfoRespond{
 				ContactId:        group.Uuid,
 				ContactName:      group.Name,
 				ContactAvatar:    group.Avatar,
@@ -170,7 +181,15 @@ func (u *userContactService) GetContactInfo(contactId string) (string, respond.G
 				ContactMembers:   group.Members,
 				ContactMemberCnt: group.MemberCnt,
 				ContactOwnerId:   group.OwnerId,
-			}, 0
+			}
+			if rspBytes, jsonErr := json.Marshal(rsp); jsonErr != nil {
+				zlog.Error(jsonErr.Error())
+			} else {
+				if cacheErr := myredis.SetKeyEx(cacheKey, string(rspBytes), time.Minute*constants.REDIS_TIMEOUT); cacheErr != nil {
+					zlog.Error(cacheErr.Error())
+				}
+			}
+			return "获取联系人信息成功", rsp, 0
 		} else {
 			zlog.Error("该群聊处于禁用状态")
 			return "该群聊处于禁用状态", respond.GetContactInfoRespond{}, -2
@@ -183,7 +202,7 @@ func (u *userContactService) GetContactInfo(contactId string) (string, respond.G
 		}
 		log.Println(user)
 		if user.Status != user_status_enum.DISABLE {
-			return "获取联系人信息成功", respond.GetContactInfoRespond{
+			rsp := respond.GetContactInfoRespond{
 				ContactId:        user.Uuid,
 				ContactName:      user.Nickname,
 				ContactAvatar:    user.Avatar,
@@ -192,7 +211,15 @@ func (u *userContactService) GetContactInfo(contactId string) (string, respond.G
 				ContactPhone:     user.Telephone,
 				ContactGender:    user.Gender,
 				ContactSignature: user.Signature,
-			}, 0
+			}
+			if rspBytes, jsonErr := json.Marshal(rsp); jsonErr != nil {
+				zlog.Error(jsonErr.Error())
+			} else {
+				if cacheErr := myredis.SetKeyEx(cacheKey, string(rspBytes), time.Minute*constants.REDIS_TIMEOUT); cacheErr != nil {
+					zlog.Error(cacheErr.Error())
+				}
+			}
+			return "获取联系人信息成功", rsp, 0
 		} else {
 			zlog.Info("该用户处于禁用状态")
 			return "该用户处于禁用状态", respond.GetContactInfoRespond{}, -2

@@ -60,56 +60,56 @@ func GetKeyNilIsErr(key string) (string, error) {
 
 func GetKeyWithPrefixNilIsErr(prefix string) (string, error) {
 	var keys []string
-	var err error
-
+	var cursor uint64
 	for {
-		// 使用 Keys 命令迭代匹配的键
-		keys, err = redisClient.Keys(ctx, prefix+"*").Result()
+		batch, nextCursor, err := redisClient.Scan(ctx, cursor, prefix+"*", 100).Result()
 		if err != nil {
 			return "", err
 		}
-
-		if len(keys) == 0 {
-			zlog.Info("没有找到相关前缀key")
-			return "", redis.Nil
-		}
-
-		if len(keys) == 1 {
-			zlog.Info(fmt.Sprintln("成功找到了相关前缀key", keys))
-			return keys[0], nil
-		} else {
-			zlog.Error("找到了数量大于1的key，查找异常")
-			return "", errors.New("找到了数量大于1的key，查找异常")
+		keys = append(keys, batch...)
+		cursor = nextCursor
+		if cursor == 0 {
+			break
 		}
 	}
 
+	if len(keys) == 0 {
+		zlog.Info("没有找到相关前缀key")
+		return "", redis.Nil
+	}
+	if len(keys) == 1 {
+		zlog.Info(fmt.Sprintln("成功找到了相关前缀key", keys))
+		return keys[0], nil
+	}
+	zlog.Error("找到了数量大于1的key，查找异常")
+	return "", errors.New("找到了数量大于1的key，查找异常")
 }
 
 func GetKeyWithSuffixNilIsErr(suffix string) (string, error) {
 	var keys []string
-	var err error
-
+	var cursor uint64
 	for {
-		// 使用 Keys 命令迭代匹配的键
-		keys, err = redisClient.Keys(ctx, "*"+suffix).Result()
+		batch, nextCursor, err := redisClient.Scan(ctx, cursor, "*"+suffix, 100).Result()
 		if err != nil {
 			return "", err
 		}
-
-		if len(keys) == 0 {
-			zlog.Info("没有找到相关后缀key")
-			return "", redis.Nil
-		}
-
-		if len(keys) == 1 {
-			zlog.Info(fmt.Sprintln("成功找到了相关后缀key", keys))
-			return keys[0], nil
-		} else {
-			zlog.Error("找到了数量大于1的key，查找异常")
-			return "", errors.New("找到了数量大于1的key，查找异常")
+		keys = append(keys, batch...)
+		cursor = nextCursor
+		if cursor == 0 {
+			break
 		}
 	}
 
+	if len(keys) == 0 {
+		zlog.Info("没有找到相关后缀key")
+		return "", redis.Nil
+	}
+	if len(keys) == 1 {
+		zlog.Info(fmt.Sprintln("成功找到了相关后缀key", keys))
+		return keys[0], nil
+	}
+	zlog.Error("找到了数量大于1的key，查找异常")
+	return "", errors.New("找到了数量大于1的key，查找异常")
 }
 
 func DelKeyIfExists(key string) error {
@@ -128,94 +128,65 @@ func DelKeyIfExists(key string) error {
 }
 
 func DelKeysWithPattern(pattern string) error {
-	var keys []string
-	var err error
-
+	var cursor uint64
 	for {
-		// 使用 Keys 命令迭代匹配的键
-		keys, err = redisClient.Keys(ctx, pattern).Result()
+		keys, nextCursor, err := redisClient.Scan(ctx, cursor, pattern, 100).Result()
 		if err != nil {
 			return err
 		}
-
-		// 如果没有更多的键，则跳出循环
-		if len(keys) == 0 {
-			log.Println("没有找到对应key")
-			break
-		}
-
-		// 删除找到的键
 		if len(keys) > 0 {
-			_, err = redisClient.Del(ctx, keys...).Result()
-			if err != nil {
+			if _, err = redisClient.Del(ctx, keys...).Result(); err != nil {
 				return err
 			}
 			log.Println("成功删除相关对应key", keys)
 		}
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
 	}
-
 	return nil
 }
 
 func DelKeysWithPrefix(prefix string) error {
-	//var cursor uint64 = 0
-	var keys []string
-	var err error
-
+	var cursor uint64
 	for {
-		// 使用 Keys 命令迭代匹配的键
-		keys, err = redisClient.Keys(ctx, prefix+"*").Result()
+		keys, nextCursor, err := redisClient.Scan(ctx, cursor, prefix+"*", 100).Result()
 		if err != nil {
 			return err
 		}
-
-		// 如果没有更多的键，则跳出循环
-		if len(keys) == 0 {
-			log.Println("没有找到相关前缀key")
-			break
-		}
-
-		// 删除找到的键
 		if len(keys) > 0 {
-			_, err = redisClient.Del(ctx, keys...).Result()
-			if err != nil {
+			if _, err = redisClient.Del(ctx, keys...).Result(); err != nil {
 				return err
 			}
 			log.Println("成功删除相关前缀key", keys)
 		}
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
 	}
-
 	return nil
 }
 
 func DelKeysWithSuffix(suffix string) error {
-	//var cursor uint64 = 0
-	var keys []string
-	var err error
-
+	var cursor uint64
 	for {
-		// 使用 Keys 命令迭代匹配的键
-		keys, err = redisClient.Keys(ctx, "*"+suffix).Result()
+		keys, nextCursor, err := redisClient.Scan(ctx, cursor, "*"+suffix, 100).Result()
 		if err != nil {
 			return err
 		}
-
-		// 如果没有更多的键，则跳出循环
-		if len(keys) == 0 {
-			log.Println("没有找到相关后缀key")
-			break
-		}
-
-		// 删除找到的键
 		if len(keys) > 0 {
-			_, err = redisClient.Del(ctx, keys...).Result()
-			if err != nil {
+			if _, err = redisClient.Del(ctx, keys...).Result(); err != nil {
 				return err
 			}
 			log.Println("成功删除相关后缀key", keys)
 		}
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
 	}
-
 	return nil
 }
 
